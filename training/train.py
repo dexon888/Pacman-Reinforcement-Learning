@@ -1,3 +1,5 @@
+import sys
+import os
 import gym
 import numpy as np
 import tensorflow as tf
@@ -5,18 +7,21 @@ from tensorflow.keras import models, layers, optimizers
 from replay_buffer import ReplayBuffer
 from environments.pacman_env import PacmanEnv
 
+# Add the root directory to the sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 def build_q_network(input_shape, num_actions):
     model = models.Sequential()
-    model.add(layers.Conv2D(32, (8, 8), strides=4, activation='relu', input_shape=input_shape))
-    model.add(layers.Conv2D(64, (4, 4), strides=2, activation='relu'))
-    model.add(layers.Conv2D(64, (3, 3), strides=1, activation='relu'))
-    model.add(layers.Flatten())
-    model.add(layers.Dense(512, activation='relu'))
-    model.add(layers.Dense(num_actions, activation='linear'))
+    model.add(layers.Conv2D(16, (8, 8), strides=4, activation='relu', input_shape=input_shape, dtype='float16'))  # Reduced filters, use float16
+    model.add(layers.Conv2D(32, (4, 4), strides=2, activation='relu', dtype='float16'))  # Reduced filters, use float16
+    model.add(layers.Conv2D(32, (3, 3), strides=1, activation='relu', dtype='float16'))  # Reduced filters, use float16
+    model.add(layers.Flatten(dtype='float16'))  # Use float16
+    model.add(layers.Dense(256, activation='relu', dtype='float16'))  # Reduced units, use float16
+    model.add(layers.Dense(num_actions, activation='linear', dtype='float16'))  # Use float16
     model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='mse')
     return model
 
-def train_agent(env, num_episodes=1000, batch_size=32, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, epsilon_decay=0.995, buffer_size=50000, min_replay_size=1000):
+def train_agent(env, num_episodes=1000, batch_size=16, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, epsilon_decay=0.995, buffer_size=50000, min_replay_size=1000):
     replay_buffer = ReplayBuffer(buffer_size)
     q_network = build_q_network(env.observation_space.shape, env.action_space.n)
     target_network = build_q_network(env.observation_space.shape, env.action_space.n)
